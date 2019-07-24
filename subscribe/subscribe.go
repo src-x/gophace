@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"image"
 	"image/color"
 	"log"
 	"os"
@@ -9,7 +10,6 @@ import (
 
 	"github.com/hajimehoshi/ebiten"
 	stan "github.com/nats-io/stan.go"
-	"gocv.io/x/gocv"
 )
 
 const (
@@ -68,11 +68,7 @@ func update(screen *ebiten.Image) error {
 }
 
 func frame(b []byte, canvas *ebiten.Image) {
-	newMat, err := gocv.NewMatFromBytes(720, 1280, 16, b)
-	if err != nil {
-		log.Fatal(err)
-	}
-	newImage, err := newMat.ToImage()
+	newImage, err := toImage(b)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -81,4 +77,34 @@ func frame(b []byte, canvas *ebiten.Image) {
 		log.Fatal(err)
 	}
 	canvas.DrawImage(camimg, nil)
+}
+
+func toImage(b []byte) (image.Image, error) {
+	width := screenWidth
+	height := screenHeight
+	step := 3840
+	data := b
+	channels := 3
+
+	img := image.NewRGBA(image.Rect(0, 0, width, height))
+	c := color.RGBA{
+		R: uint8(0),
+		G: uint8(0),
+		B: uint8(0),
+		A: uint8(255),
+	}
+
+	for y := 0; y < height; y++ {
+		for x := 0; x < step; x = x + channels {
+			c.B = uint8(data[y*step+x])
+			c.G = uint8(data[y*step+x+1])
+			c.R = uint8(data[y*step+x+2])
+			if channels == 4 {
+				c.A = uint8(data[y*step+x+3])
+			}
+			img.SetRGBA(int(x/channels), y, c)
+		}
+	}
+
+	return img, nil
 }
