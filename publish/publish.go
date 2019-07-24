@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	_ "image/jpeg"
 	"log"
@@ -16,7 +15,7 @@ import (
 func main() {
 	opts := stand.GetDefaultOptions()
 	nopts := stand.NewNATSOptions()
-	nopts.MaxPayload = 2764800
+	nopts.MaxPayload = 30000000
 	s, _ := stand.RunServerWithOpts(opts, nopts)
 	defer s.Shutdown()
 	sc, err := stan.Connect(
@@ -35,34 +34,16 @@ func main() {
 func cv(sc stan.Conn) {
 	webcam, _ := gocv.VideoCaptureDevice(0)
 	img := gocv.NewMat()
-	fmt.Println("Press ESC button or Ctrl-C to exit this program")
-	fmt.Println("Press RETURN to send webcam image")
 
 	for {
-		consoleReader := bufio.NewReaderSize(os.Stdin, 1)
-		fmt.Print(">> PRESS RETURN")
-		input, _ := consoleReader.ReadByte()
-
-		ascii := input
-
-		if ascii == 27 || ascii == 3 {
-			fmt.Println("Exiting...")
-			os.Exit(0)
-		}
-
-		if ascii == 10 {
-			if ok := webcam.Read(&img); !ok {
-				fmt.Printf("cannot read device %v\n", 0)
-				return
-			}
-			publish(sc, img.ToBytes())
-			fmt.Println("---> IMAGE SENT")
-		}
+		webcam.Read(&img)
+		go publish(sc, img.ToBytes())
+		fmt.Println("---> IMAGE SENT")
 	}
 }
 
 func publish(sc stan.Conn, data []byte) {
-	if err := sc.Publish("foo", data); err != nil {
+	if err := sc.Publish("video", data); err != nil {
 		log.Fatalln(err)
 	}
 }
