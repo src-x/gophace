@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"image"
+	"image/color"
 	_ "image/jpeg"
 	"log"
 	"os"
@@ -32,11 +34,32 @@ func main() {
 }
 
 func cv(sc stan.Conn) {
+	blue := color.RGBA{0, 0, 255, 0}
+
+	cascadePath := "xml_files/haarcascade_frontalface_default.xml"
+	classifier := gocv.NewCascadeClassifier()
+	defer classifier.Close()
+
+	if !classifier.Load(cascadePath) {
+		fmt.Printf("Error reading cascade file")
+		return
+	}
+
 	webcam, _ := gocv.VideoCaptureDevice(0)
 	img := gocv.NewMat()
 
 	for {
 		webcam.Read(&img)
+		rects := classifier.DetectMultiScale(img)
+		fmt.Printf("found %d faces\n", len(rects))
+
+		for _, r := range rects {
+			gocv.Rectangle(&img, r, blue, 3)
+
+			size := gocv.GetTextSize("A Face", gocv.FontHersheyPlain, 1.2, 2)
+			pt := image.Pt(r.Min.X+(r.Min.X/2)-(size.X/2), r.Min.Y-2)
+			gocv.PutText(&img, "A Face", pt, gocv.FontHersheyPlain, 1.2, blue, 2)
+		}
 		go publish(sc, img.ToBytes())
 		fmt.Println("---> IMAGE SENT")
 	}

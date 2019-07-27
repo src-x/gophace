@@ -64,6 +64,7 @@ func update(screen *ebiten.Image) error {
 		return nil
 	}
 	screen.DrawImage(canvasImg, nil)
+	ebiten.SetRunnableInBackground(true)
 	return nil
 }
 
